@@ -23,5 +23,14 @@ public class RingBufferReaer {
 		
 		
 	}
+	private void openFiles(){
+		for(int i=0;i<files.length-2;i++)
+			try {
+				input[i] = new FileInputStream(files[i]);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	}
 
 }
