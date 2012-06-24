@@ -17,6 +17,7 @@ public class StorageDatabase {
 	private PreparedStatement printAllFiles;
 	private PreparedStatement findFileWithTime;
 	private PreparedStatement clearAll;
+	private PreparedStatement updateEndTime;
 	
 
 	
@@ -70,6 +71,7 @@ public class StorageDatabase {
 			printAllFiles = databaseConn.prepareStatement("SELECT * FROM FileList");
 			findFileWithTime = databaseConn.prepareStatement("SELECT * FROM FileList WHERE ? BETWEEN StartTime AND EndTime");
 			clearAll = databaseConn.prepareStatement("DELETE FROM FileList");
+			updateEndTime = databaseConn.prepareStatement("UPDATE FileList SET EndTime = ? WHERE FileName =? ");
 		} catch (SQLException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -85,8 +87,7 @@ public class StorageDatabase {
 			addFile.setString(1, fileName);
 			addFile.setTimestamp(2, new Timestamp(startTime));
 			addFile.setTimestamp(3, new Timestamp(endTime));
-			boolean finished = addFile.execute();
-			System.out.println("Adding the file: " + finished);
+			addFile.execute();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -155,6 +156,20 @@ public class StorageDatabase {
 			e.printStackTrace();
 		}
 	}
+	
+	public void updateEndTime(String file, long endTime)
+	{
+		try {
+			updateEndTime.setTimestamp(1, new Timestamp(endTime));
+			updateEndTime.setString(2, file);
+			updateEndTime.execute();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+	
 	
 	public void close()
 	{
