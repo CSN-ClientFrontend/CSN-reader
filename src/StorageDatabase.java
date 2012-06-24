@@ -18,12 +18,10 @@ public class StorageDatabase {
 	private PreparedStatement findFileWithTime;
 	private PreparedStatement clearAll;
 	
-	private File homeDirectory = new File(System.getProperty("user.home"));
-	private File rootDirectory = new File(homeDirectory,"CSNStuff");
+
 	
 	public StorageDatabase() {
-		if (!rootDirectory.isDirectory())
-			System.out.println("Directory made = " + rootDirectory.mkdir());
+		
 		
 		try {
 			Class.forName("org.h2.Driver");
@@ -32,12 +30,27 @@ public class StorageDatabase {
 			e.printStackTrace();
 		}
 		
+		
+		
+		
+		File root = Constants.getRoot();
+		File databaseLocation = new File(root,"storageDatabase");
+		String path = null;
 		try {
-			databaseConn = DriverManager.getConnection("jdbc:h2:~/test3;ifexists=true","","");
+			path = databaseLocation.getCanonicalPath();
+		} catch (IOException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+			throw new RuntimeException(e2);
+		}
+		
+		
+		try {
+			databaseConn = DriverManager.getConnection("jdbc:h2:" + path + ";ifexists=true","","");
 		} catch (SQLException e) {
 			// Database does not already exist
 			try {
-				databaseConn = DriverManager.getConnection("jdbc:h2:~/test3","","");
+				databaseConn = DriverManager.getConnection("jdbc:h2:" + path,"","");
 				initializeDatabase();
 			} catch (SQLException e1) {
 				// TODO Auto-generated catch block

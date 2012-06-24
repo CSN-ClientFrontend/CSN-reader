@@ -15,23 +15,18 @@ public class Main {
 	public static void main(String[] args) {
 		
 		
+		System.out.println(System.getProperty("user.dir"));
 		
+		System.out.println(Constants.getRoot().getAbsolutePath());
 		
-		ConfigDatabase b = new ConfigDatabase();
-		
-		StorageDatabase c = new StorageDatabase();
-		
-		long time = System.currentTimeMillis();
-		c.addFile("foo", time - 2000,time - 1001);
-		c.addFile("blah", time - 1000,time);
-		
-		c.clearAll();
-		c.printAllFiles();
-		
-		System.out.println(c.findFileWithTime(time-500));
-		c.close();
-	
+		StorageDatabase storage = new StorageDatabase();
+		ConfigFile config = new ConfigFile();
 
+		
+		
+		
+		config.close();
+		storage.close();
 	}
 
 }
