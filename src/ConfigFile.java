@@ -17,7 +17,9 @@ public class ConfigFile {
 
 	class Configuration
 	{
-		int currentFileIndex;
+		int currentInFile;
+		int currentOutFile;
+		int currentFileLocation;
 	}
 	
 	
@@ -37,9 +39,36 @@ public class ConfigFile {
 	}
 	
 	
-	public int getCurrentFileIndex()
+	public int getCurrentInFile()
 	{
-		return config.currentFileIndex;
+		return config.currentInFile;
+	}
+	
+	public int getCurrentOutFile()
+	{
+		return config.currentOutFile;
+	}
+	
+	public int getCurrentFileLocation()
+	{
+		return config.currentFileLocation;
+	}
+	
+	
+	public void setCurrentFileLocation(int loc)
+	{
+		config.currentFileLocation = loc;
+	}
+	
+	
+	public void incrementCurrentOutFile()
+	{
+		config.currentOutFile++;
+	}
+	
+	public void incrementCurrentInFile()
+	{
+		config.currentInFile++;
 	}
 	
 	

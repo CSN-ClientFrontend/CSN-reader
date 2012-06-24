@@ -22,6 +22,9 @@ public class Main {
 		StorageDatabase storage = new StorageDatabase();
 		ConfigFile config = new ConfigFile();
 
+		int startingFile = config.getCurrentInFile();
+		int startingByte = config.getCurrentFileLocation();
+		
 		
 		
 		
