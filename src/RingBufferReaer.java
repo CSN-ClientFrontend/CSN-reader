@@ -1,4 +1,5 @@
 import java.io.*;
+import java.nio.channels.FileChannel;
 
 import javax.imageio.stream.FileImageInputStream;
 public class RingBufferReaer {
@@ -16,6 +17,9 @@ public class RingBufferReaer {
 		input[metadata] = new FileInputStream(files[metadata]);
 		
 		
+	}
+	public FileChannel[] openChannels(){
+		return new FileChannel[]{input[0].getChannel(),input[1].getChannel(),input[2].getChannel()};
 	}
 	private void openFiles(){
 		filesOpened=true;
@@ -51,6 +55,10 @@ public class RingBufferReaer {
 			e.printStackTrace();
 		}
 		
+	}
+	
+	public long getRingPosition(){
+		return 0;
 	}
 
 }
