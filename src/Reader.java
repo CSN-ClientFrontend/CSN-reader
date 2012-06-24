@@ -9,7 +9,13 @@ public class Reader {
 			directory = new File("C:\\WINDOWS\\Temp\\CSNService");
 		else
 			directory = new File("/var/tmp/CSNDaemon");
+		
 	}
+	
+	public void read(byte[]a,byte[]b,byte[]c,double startingPerc){
+		
+	}
+	
 	
 
 }

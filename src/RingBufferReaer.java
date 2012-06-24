@@ -6,6 +6,7 @@ public class RingBufferReaer {
 	FileInputStream[] input;
 	public final static int metadata = 3;
 	public final static int timecode = 4;
+	boolean filesOpened=false;
 	
 	public RingBufferReaer(int n,File directory) throws FileNotFoundException{
 		files = new File[] {new File(directory,n+"-0"),new File(directory,n+"-1"),
@@ -13,17 +14,11 @@ public class RingBufferReaer {
 					new File(directory,n+"-timecode")};
 		input = new FileInputStream[files.length];
 		input[metadata] = new FileInputStream(files[metadata]);
-//		for(int i=0;i<files.length-1;i++)
-//			try {
-//				input[i] = new FileImageInputStream(files[i]);
-//			} catch (IOException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
 		
 		
 	}
 	private void openFiles(){
+		filesOpened=true;
 		for(int i=0;i<files.length-2;i++)
 			try {
 				input[i] = new FileInputStream(files[i]);
@@ -31,6 +26,31 @@ public class RingBufferReaer {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+		if(files[timecode].exists())
+			try {
+				input[timecode]=new FileInputStream(files[timecode]);
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	}
+	public boolean currentlyActive(){
+		return files[timecode].exists();
+	}
+	
+	public void read(byte[]a,byte[]b,byte[]c, int off, int len){
+		if(!filesOpened)
+			openFiles();
+		
+		try {
+			input[0].read(a, off, len);
+			input[1].read(b, off, len);
+			input[2].read(c, off, len);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 
 }
