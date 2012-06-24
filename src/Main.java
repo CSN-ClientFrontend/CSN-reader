@@ -17,7 +17,19 @@ public class Main {
 		
 		
 		
-		Database b = new Database();
+		ConfigDatabase b = new ConfigDatabase();
+		
+		StorageDatabase c = new StorageDatabase();
+		
+		long time = System.currentTimeMillis();
+		c.addFile("foo", time - 2000,time - 1001);
+		c.addFile("blah", time - 1000,time);
+		
+		c.clearAll();
+		c.printAllFiles();
+		
+		System.out.println(c.findFileWithTime(time-500));
+		c.close();
 	
 
 	}
