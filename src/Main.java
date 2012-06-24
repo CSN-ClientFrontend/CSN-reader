@@ -39,12 +39,7 @@ public class Main {
 			long startTime = Long.parseLong(data.get("begin"));
 			long endTime = Long.parseLong(data.get("end"));
 			
-			if (startingByte ==0)
-				storage.addFile(startingFile + "" , startTime, endTime);
-			else
-				storage.updateEndTime("" + startingFile, endTime);
 			
-			System.out.println(numOfBytesInFile);
 
 			try {
 
@@ -59,6 +54,13 @@ public class Main {
 				file0.transferTo(startingByte, numOfBytesInFile - startingByte,
 						fileOut0);
 
+				if (startingByte ==0)
+					storage.addFile(startingFile + "" , startTime, endTime);
+				else
+					storage.updateEndTime("" + startingFile, endTime);
+				
+				System.out.println(numOfBytesInFile);
+				
 				config.setCurrentFileLocation(numOfBytesInFile);
 				
 				File nextInList = new File("C:\\Windows\\Temp\\CSNService",
