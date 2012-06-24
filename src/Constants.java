@@ -7,7 +7,13 @@ public class Constants {
 	
 	static {
 		try {
-			root = new File(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParentFile();
+			File actualRoot = new File(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParentFile();
+			
+			root = new File(actualRoot,"data");
+			if (!root.isDirectory())
+			{
+				root.mkdir();
+			}
 		} catch (URISyntaxException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
