@@ -35,9 +35,12 @@ class Section
 }
 
 
+
+
 class Connection implements Runnable {
 
 	Socket mySock;
+	
 
 	public Connection(Socket mySock) {
 		this.mySock = mySock;
@@ -48,13 +51,16 @@ class Connection implements Runnable {
 
 		System.out.println("Socket open at " + mySock.getRemoteSocketAddress());
 
-		try {
-			Gson gson = new Gson();
-			DataInputStream dataIn = new DataInputStream(
-					mySock.getInputStream());
+		try (	Socket socket = mySock;
+				DataInputStream dataIn = new DataInputStream(socket.getInputStream());
+				DataOutputStream dataOut = new DataOutputStream(socket.getOutputStream()) 
+				){
+			
+			
 			StorageDatabase base = new StorageDatabase();
 			
-			DataOutputStream dataOut = new DataOutputStream(mySock.getOutputStream());
+			Gson gson = new Gson();
+			;
 
 			while (true) {
 				
@@ -93,9 +99,11 @@ class Connection implements Runnable {
 				
 				for (String file : startingFiles)
 				{
-					FileInputStream in = new FileInputStream(new File(Constants.getRoot(),file + "-0"));
-					int numOfBytes = IOUtils.copy(in,dataOut);
-					System.out.println(file + " : " + numOfBytes);
+					try(FileInputStream in = new FileInputStream(new File(Constants.getRoot(),file + "-0")))
+					{
+						int numOfBytes = IOUtils.copy(in,dataOut);
+						System.out.println(file + " : " + numOfBytes);
+					}
 				}
 				
 				
@@ -152,18 +160,7 @@ class Connection implements Runnable {
 		}
 		catch (Exception e) {
 			e.printStackTrace();
-		} finally {
-			
-			try {
-				mySock.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-				
-			}
-			
-			System.out.println("Socket dead");
-		}
-
+		} 
 	}
 
 }
