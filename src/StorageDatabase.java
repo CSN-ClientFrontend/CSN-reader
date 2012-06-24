@@ -8,6 +8,15 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
+
+class FileInfo
+{
+	String fileName;
+	long startTime;
+	long endTime;
+}
 
 
 public class StorageDatabase {
@@ -18,6 +27,7 @@ public class StorageDatabase {
 	private PreparedStatement findFileWithTime;
 	private PreparedStatement clearAll;
 	private PreparedStatement updateEndTime;
+	private PreparedStatement getFileInfo;
 	
 
 	
@@ -69,9 +79,10 @@ public class StorageDatabase {
 		try {
 			addFile = databaseConn.prepareStatement("INSERT INTO FileList VALUES ( ?, ? ,?)");
 			printAllFiles = databaseConn.prepareStatement("SELECT * FROM FileList");
-			findFileWithTime = databaseConn.prepareStatement("SELECT * FROM FileList WHERE ? BETWEEN StartTime AND EndTime");
+			findFileWithTime = databaseConn.prepareStatement("SELECT * FROM FileList WHERE (? BETWEEN StartTime AND EndTime) OR (? BETWEEN StartTime AND EndTime) OR (StartTime BETWEEN ? AND ?) ");
 			clearAll = databaseConn.prepareStatement("DELETE FROM FileList");
 			updateEndTime = databaseConn.prepareStatement("UPDATE FileList SET EndTime = ? WHERE FileName =? ");
+			getFileInfo = databaseConn.prepareStatement("SELECT * FROM FileList WHERE FileName = ?");
 		} catch (SQLException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -121,17 +132,22 @@ public class StorageDatabase {
 		}	
 	}
 	
-	public String findFileWithTime(long timestamp)
+	public List<String> findFilesWithTime(long startTime,long endTime)
 	{
 		try {
-			findFileWithTime.setTimestamp(1, new Timestamp(timestamp));
+			List<String> results = new ArrayList<>();
+			
+			findFileWithTime.setTimestamp(1, new Timestamp(startTime));
+			findFileWithTime.setTimestamp(2, new Timestamp(endTime));
+			findFileWithTime.setTimestamp(3, new Timestamp(startTime));
+			findFileWithTime.setTimestamp(4, new Timestamp(endTime));
 			ResultSet result = findFileWithTime.executeQuery();
-			if (!result.next()) // No results
-				return null;
-			String answer = result.getString("FileName");
-			if (result.next()) // Too many results
-				throw new RuntimeException("More than one file with that timestamp");
-			return answer;
+			while (result.next())
+			{
+				results.add(result.getString("FileName"));
+			}
+			result.close();
+			return results;
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -141,9 +157,35 @@ public class StorageDatabase {
 		
 	}
 	
+	
+	public FileInfo getFileInfo(String filename)
+	{
+		try {
+			getFileInfo.setString(1, filename);
+			ResultSet res = getFileInfo.executeQuery();
+			res.next();
+			
+			FileInfo answer = new FileInfo();
+			answer.fileName = res.getString("FileName");
+			answer.startTime = res.getTimestamp("StartTime").getTime();
+			answer.endTime = res.getTimestamp("EndTime").getTime();
+	
+			res.close();
+			
+			return answer;
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+		
+		
+	}
+	
+	
 	private void initializeDatabase() throws SQLException {
 		Statement stat =  databaseConn.createStatement();
-		stat.execute("CREATE TABLE FileList (FileName VARCHAR(255) NOT NULL, StartTime TIMESTAMP NOT NULL, EndTime TIMESTAMP NOT NULL)");
+		stat.execute("CREATE TABLE FileList (FileName VARCHAR(255) NOT NULL UNIQUE, StartTime TIMESTAMP NOT NULL, EndTime TIMESTAMP NOT NULL)");
 	}
 		
 	

@@ -11,6 +11,7 @@ public class Main {
 	 */
 	public static void main(String[] args) {
 
+		Server b = new Server();
 		System.out.println(System.getProperty("user.dir"));
 
 		System.out.println(Constants.getRoot().getAbsolutePath());
@@ -19,6 +20,8 @@ public class Main {
 		ConfigFile config = new ConfigFile();
 
 		storage.printAllFiles();
+		
+			
 		
 		while (true) {
 			int startingFile = config.getCurrentInFile();
@@ -77,6 +80,7 @@ public class Main {
 
 		config.close();
 		storage.close();
+		b.close();
 	}
 
 }
