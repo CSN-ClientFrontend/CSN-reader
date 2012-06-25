@@ -17,7 +17,7 @@ import org.apache.commons.io.IOUtils;
 import com.google.gson.Gson;
 
 class TempFileInfo {
-	File file;
+	String file;
 	long offset;
 	long length;
 }
@@ -72,29 +72,27 @@ class Connection implements Runnable {
 
 				for (int i = 0; i < startingFiles.size(); i++) {
 					String file = startingFiles.get(i);
-					File f = new File(Constants.getRoot(), file + "-0");
+
 					Protocol.Section sec = new Protocol.Section();
 					FileInfo info = base.getFileInfo(file);
 
-					sec.length = f.length();
+					sec.length = info.length;
 					sec.startTime = info.startTime;
 					sec.endTime = info.endTime;
 					res.sections[i] = sec;
 
 					fileToWrite[i] = new TempFileInfo();
-					fileToWrite[i].file = f;
-					fileToWrite[i].length = f.length();
+					fileToWrite[i].file = file;
+					fileToWrite[i].length = info.length;
 					fileToWrite[i].offset = 0;
 
 				}
 
-				File firstFile = new File(Constants.getRoot(),
-						startingFiles.get(0) + "-0");
-				FileInfo info = base.getFileInfo(startingFiles.get(0));
+				Protocol.Section info = res.sections[0];
 
 				if (mes.startTime > info.startTime) {
 
-					long sizeOfFirst = firstFile.length();
+					long sizeOfFirst = info.length;
 					long timeDeltaFirst = info.endTime - info.startTime;
 					long timeToSkipFirst = mes.startTime - info.startTime;
 					System.out.println(timeToSkipFirst + " " + timeDeltaFirst);
@@ -119,14 +117,11 @@ class Connection implements Runnable {
 					fileToWrite[0].length = sizeOfFirstMessage;
 				}
 
-				File lastFile = new File(Constants.getRoot(),
-						startingFiles.get(startingFiles.size() - 1) + "-0");
-				FileInfo info2 = base.getFileInfo(startingFiles
-						.get(startingFiles.size() - 1));
+				Protocol.Section info2 = res.sections[res.sections.length -1];;
 
 				if (mes.endTime < info2.endTime) {
 
-					long sizeOfSecond = lastFile.length();
+					long sizeOfSecond = info2.length;
 					long timeDeltaLast = info2.endTime - info2.startTime;
 					long timeNeededLast = mes.endTime - info2.startTime;
 
@@ -140,18 +135,19 @@ class Connection implements Runnable {
 						exactEndingPlace = sizeOfSecond; // Missing bytes at end
 
 					res.sections[startingFiles.size() - 1].endTime = mes.endTime;
-					res.sections[startingFiles.size() - 1].length -= (sizeOfSecond - exactEndingPlace);
+					res.sections[startingFiles.size() - 1].length = exactEndingPlace;
 
-					fileToWrite[startingFiles.size() - 1].length -= (sizeOfSecond - exactEndingPlace);
+					fileToWrite[startingFiles.size() - 1].length = exactEndingPlace;
 				}
 
 				dataOut.writeUTF(gson.toJson(res));
 
 				for (TempFileInfo info3 : fileToWrite) {
-					try (FileInputStream in = new FileInputStream(info3.file)) {
+					File f = new File(Constants.getRoot(),info3.file + "-0");
+					try (FileInputStream in = new FileInputStream(f)) {
 						long numOfBytes = IOUtils.copyLarge(in, dataOut,
 								info3.offset, info3.length);
-						System.out.println(info3.file.getAbsolutePath() + " : "
+						System.out.println(f.getAbsolutePath() + " : "
 								+ numOfBytes);
 					}
 				}

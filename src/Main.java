@@ -55,9 +55,9 @@ public class Main {
 					System.out.println(numOfBytesInFile);
 
 					if (startingByte == 0)
-						storage.addFile(startingFile + "", startTime, endTime);
+						storage.addFile(startingFile + "", startTime, endTime,numOfBytesInFile);
 					else
-						storage.updateEndTime("" + startingFile, endTime);
+						storage.updateEndTimeAndLength("" + startingFile, endTime,numOfBytesInFile);
 
 					File nextInList = new File("C:\\Windows\\Temp\\CSNService",
 							(startingFile + 1) + "-0");

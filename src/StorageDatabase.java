@@ -16,6 +16,7 @@ class FileInfo
 	String fileName;
 	long startTime;
 	long endTime;
+	long length;
 }
 
 
@@ -77,11 +78,11 @@ public class StorageDatabase {
 		
 		
 		try {
-			addFile = databaseConn.prepareStatement("INSERT INTO FileList VALUES ( ?, ? ,?)");
+			addFile = databaseConn.prepareStatement("INSERT INTO FileList VALUES ( ?, ? ,?, ?)");
 			printAllFiles = databaseConn.prepareStatement("SELECT * FROM FileList");
 			findFileWithTime = databaseConn.prepareStatement("SELECT * FROM FileList WHERE (? BETWEEN StartTime AND EndTime) OR (? BETWEEN StartTime AND EndTime) OR (StartTime BETWEEN ? AND ?) ");
 			clearAll = databaseConn.prepareStatement("DELETE FROM FileList");
-			updateEndTime = databaseConn.prepareStatement("UPDATE FileList SET EndTime = ? WHERE FileName =? ");
+			updateEndTime = databaseConn.prepareStatement("UPDATE FileList SET EndTime = ?, Length = ? WHERE FileName =? ");
 			getFileInfo = databaseConn.prepareStatement("SELECT * FROM FileList WHERE FileName = ?");
 		} catch (SQLException e1) {
 			// TODO Auto-generated catch block
@@ -93,11 +94,12 @@ public class StorageDatabase {
 		
 	}
 	
-	public void addFile(String fileName, long startTime, long endTime) {
+	public void addFile(String fileName, long startTime, long endTime, long length) {
 		try {
 			addFile.setString(1, fileName);
 			addFile.setTimestamp(2, new Timestamp(startTime));
 			addFile.setTimestamp(3, new Timestamp(endTime));
+			addFile.setLong(4, length);
 			addFile.execute();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -118,9 +120,10 @@ public class StorageDatabase {
 				String fileName = result.getString("FileName");
 				Timestamp start = result.getTimestamp("StartTime");
 				Timestamp end = result.getTimestamp("EndTime");
+				long length=  result.getLong("Length");
 				int row = result.getRow();
 				
-				System.out.printf("Line %d: FileName=%s, StartTime=%s, EndTime=%s\n", row,fileName,start,end);
+				System.out.printf("Line %d: FileName=%s, StartTime=%s, EndTime=%s, Length=%s\n", row,fileName,start,end,length);
 			
 			}
 			result.close();
@@ -169,6 +172,7 @@ public class StorageDatabase {
 			answer.fileName = res.getString("FileName");
 			answer.startTime = res.getTimestamp("StartTime").getTime();
 			answer.endTime = res.getTimestamp("EndTime").getTime();
+			answer.length = res.getLong("Length");
 	
 			res.close();
 			
@@ -185,7 +189,7 @@ public class StorageDatabase {
 	
 	private void initializeDatabase() throws SQLException {
 		Statement stat =  databaseConn.createStatement();
-		stat.execute("CREATE TABLE FileList (FileName VARCHAR(255) NOT NULL UNIQUE, StartTime TIMESTAMP NOT NULL, EndTime TIMESTAMP NOT NULL)");
+		stat.execute("CREATE TABLE FileList (FileName VARCHAR(255) NOT NULL UNIQUE, StartTime TIMESTAMP NOT NULL, EndTime TIMESTAMP NOT NULL, Length INTEGER NOT NULL)");
 	}
 		
 	
@@ -199,11 +203,12 @@ public class StorageDatabase {
 		}
 	}
 	
-	public void updateEndTime(String file, long endTime)
+	public void updateEndTimeAndLength(String file, long endTime,long length)
 	{
 		try {
 			updateEndTime.setTimestamp(1, new Timestamp(endTime));
-			updateEndTime.setString(2, file);
+			updateEndTime.setLong(2, length);
+			updateEndTime.setString(3, file);
 			updateEndTime.execute();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
