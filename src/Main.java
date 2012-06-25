@@ -20,69 +20,75 @@ public class Main {
 		ConfigFile config = new ConfigFile();
 
 		storage.printAllFiles();
-		
-			
-		
+
 		while (true) {
-			int startingFile = config.getCurrentInFile();
-			int startingByte = config.getCurrentFileLocation();
+			while (true) {
+				int startingFile = config.getCurrentInFile();
+				int startingByte = config.getCurrentFileLocation();
 
-			Map<String, String> data = MetadataParser
-					.parseMetadata(new File("C:\\Windows\\Temp\\CSNService",
-							startingFile + "-metadata"));
-			System.out.println(data);
+				Map<String, String> data = MetadataParser
+						.parseMetadata(new File(
+								"C:\\Windows\\Temp\\CSNService", startingFile
+										+ "-metadata"));
+				System.out.println(data);
 
-			int length = Integer.parseInt(data.get("length"));
-			int rate = Integer.parseInt(data.get("device.dataRate"));
-			int numOfBytesInFile = length / rate * 2;
+				int length = Integer.parseInt(data.get("length"));
+				int rate = Integer.parseInt(data.get("device.dataRate"));
+				int numOfBytesInFile = length / rate * 2;
 
-			long startTime = Long.parseLong(data.get("begin"));
-			long endTime = Long.parseLong(data.get("end"));
-			
-			
+				long startTime = Long.parseLong(data.get("begin"));
+				long endTime = Long.parseLong(data.get("end"));
+
+				try {
+
+					FileChannel file0 = FileChannel.open(new File(
+							"C:\\Windows\\Temp\\CSNService", startingFile
+									+ "-0").toPath(), StandardOpenOption.READ);
+					FileChannel fileOut0 = FileChannel.open(
+							new File(Constants.getRoot(), startingFile + "-0")
+									.toPath(), StandardOpenOption.APPEND,
+							StandardOpenOption.CREATE);
+
+					file0.transferTo(startingByte, numOfBytesInFile
+							- startingByte, fileOut0);
+
+					System.out.println(numOfBytesInFile);
+
+					if (startingByte == 0)
+						storage.addFile(startingFile + "", startTime, endTime);
+					else
+						storage.updateEndTime("" + startingFile, endTime);
+
+					File nextInList = new File("C:\\Windows\\Temp\\CSNService",
+							(startingFile + 1) + "-0");
+
+					if (nextInList.exists()) {
+						config.incrementCurrentInFile();
+						config.setCurrentFileLocation(0);
+
+					} else {
+						config.setCurrentFileLocation(numOfBytesInFile);
+						config.save();
+						break;
+					}
+
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+
+			}
 
 			try {
-
-				FileChannel file0 = FileChannel.open(
-						new File("C:\\Windows\\Temp\\CSNService", startingFile
-								+ "-0").toPath(), StandardOpenOption.READ);
-				FileChannel fileOut0 = FileChannel.open(
-						new File(Constants.getRoot(), startingFile + "-0")
-								.toPath(), StandardOpenOption.APPEND,
-						StandardOpenOption.CREATE);
-				
-				file0.transferTo(startingByte, numOfBytesInFile - startingByte,
-						fileOut0);
-
-				if (startingByte ==0)
-					storage.addFile(startingFile + "" , startTime, endTime);
-				else
-					storage.updateEndTime("" + startingFile, endTime);
-				
-				System.out.println(numOfBytesInFile);
-				
-				config.setCurrentFileLocation(numOfBytesInFile);
-				
-				File nextInList = new File("C:\\Windows\\Temp\\CSNService",
-						(startingFile + 1) + "-0");
-				if (nextInList.exists())
-				{
-					config.incrementCurrentInFile();
-					config.setCurrentFileLocation(0);
-				}
-				else
-					break;
-
-			} catch (IOException e) {
+				Thread.sleep(2000);
+			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-
 		}
 
-		config.close();
-		storage.close();
-		b.close();
+//		storage.close();
+//		b.close();
 	}
 
 }

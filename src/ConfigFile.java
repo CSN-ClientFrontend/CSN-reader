@@ -72,7 +72,7 @@ public class ConfigFile {
 	}
 	
 	
-	public void close()
+	public void save()
 	{
 		writeString(gson.toJson(config));
 	}
