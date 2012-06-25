@@ -121,7 +121,6 @@ class Connection implements Runnable {
         }
         return filesToWrite;
     }
-    
 
     private void shortenLastMessage(Protocol.Message mes, Protocol.Response res, TempFileInfo[] filesToWrite) {
         int index = res.sections.length -1;
@@ -130,12 +129,12 @@ class Connection implements Runnable {
 
         if (mes.endTime < info2.endTime) {
 
-            long offset = getOffset(mes, info2);
+            long length = getOffset( info2, mes.endTime);
 
             res.sections[index].endTime = mes.endTime;
-            res.sections[index].length = offset;
+            res.sections[index].length = length;
 
-            filesToWrite[index].length = offset;
+            filesToWrite[index].length = length;
         }
     }
 
@@ -144,9 +143,8 @@ class Connection implements Runnable {
 
         if (mes.startTime > info.startTime) {
 
-            long offset =  getOffset(mes, info);
+            long offset =  getOffset( info,mes.startTime);
             
-           
             
             long newLength = info.length - offset;
 
@@ -158,10 +156,10 @@ class Connection implements Runnable {
         }
     }
 
-    private long getOffset(Protocol.Message mes, Protocol.Section info) {
+    private long getOffset(Protocol.Section info, long until) {
         long sizeOfFirst = info.length;
         long timeDeltaFirst = info.endTime - info.startTime;
-        long timeToSkipFirst = mes.startTime - info.startTime;
+        long timeToSkipFirst = until - info.startTime;
         System.out.println(timeToSkipFirst + " " + timeDeltaFirst);
 
         // long exactStartingPlace = (timeToSkip * sizeOfFirst)/
