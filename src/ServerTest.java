@@ -29,9 +29,9 @@ public class ServerTest {
 		System.out.println(s);
 		
 		Gson g = new Gson();
-		Response res = g.fromJson(s, Response.class);
+		Protocol.Response res = g.fromJson(s, Protocol.Response.class);
 		
-		for (Section sect : res.sections)
+		for (Protocol.Section sect : res.sections)
 		{
 			System.out.println(sect.length);
 			byte[] buffer = new byte[(int) sect.length];

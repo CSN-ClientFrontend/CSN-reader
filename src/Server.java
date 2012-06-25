@@ -14,27 +14,9 @@ import javax.sql.ConnectionEvent;
 
 import org.apache.commons.io.IOUtils;
 
+
+
 import com.google.gson.Gson;
-
-class Message
-{
-	long startTime;
-	long endTime;
-}
-
-class Response
-{
-	Section[] sections;
-}
-
-class Section
-{
-	long length;
-	long startTime;
-	long endTime;
-}
-
-
 
 
 class Connection implements Runnable {
@@ -66,7 +48,7 @@ class Connection implements Runnable {
 				
 				String input = dataIn.readUTF();
 				System.out.println("Recieved string: " + input );
-				Message mes = gson.fromJson(input, Message.class);
+				Protocol.Message mes = gson.fromJson(input, Protocol.Message.class);
 				
 				
 				System.out.println(mes.startTime);
@@ -78,14 +60,14 @@ class Connection implements Runnable {
 				
 				
 				
-				Response res = new Response();
-				res.sections = new Section[startingFiles.size()];
+				Protocol.Response res = new Protocol.Response();
+				res.sections = new Protocol.Section[startingFiles.size()];
 				
 				for (int i = 0 ; i <startingFiles.size(); i++)
 				{
 					String file = startingFiles.get(i);
 					File f = new File(Constants.getRoot(),file+ "-0");
-					Section sec = new Section();
+					Protocol.Section sec = new Protocol.Section();
 					FileInfo info = base.getFileInfo(file);
 					sec.length = f.length();
 					sec.startTime = info.startTime;
