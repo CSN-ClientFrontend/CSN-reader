@@ -30,7 +30,7 @@ public class Main {
 						.parseMetadata(new File(
 								"C:\\Windows\\Temp\\CSNService", startingFile
 										+ "-metadata"));
-				System.out.println(data);
+				//System.out.println(data);
 
 				int length = Integer.parseInt(data.get("length"));
 				int rate = Integer.parseInt(data.get("device.dataRate"));
