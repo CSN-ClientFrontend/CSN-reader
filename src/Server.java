@@ -5,6 +5,7 @@ import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -17,216 +18,245 @@ import org.apache.commons.io.IOUtils;
 import com.google.gson.Gson;
 
 class TempFileInfo {
-	String file;
-	long offset;
-	long length;
+    String file;
+    long offset;
+    long length;
 }
 
 class Connection implements Runnable {
 
-	Socket mySock;
+    Socket mySock;
 
-	public Connection(Socket mySock) {
-		this.mySock = mySock;
-	}
+    public Connection(Socket mySock) {
+        this.mySock = mySock;
+    }
 
-	@Override
-	public void run() {
+ 
 
-		System.out.println("Socket open at " + mySock.getRemoteSocketAddress());
+    @Override
+    public void run() {
 
-		try (Socket socket = mySock;
-				DataInputStream dataIn = new DataInputStream(
-						socket.getInputStream());
-				DataOutputStream dataOut = new DataOutputStream(
-						socket.getOutputStream())) {
+        System.out.println("Socket open at " + mySock.getRemoteSocketAddress());
 
-			StorageDatabase base = new StorageDatabase();
+        try (Socket socket = mySock; 
+             DataInputStream dataIn = new DataInputStream(socket.getInputStream());
+             DataOutputStream dataOut = new DataOutputStream(socket.getOutputStream())) {
 
-			Gson gson = new Gson();
+            StorageDatabase base = new StorageDatabase();
 
-			while (true) {
+            Gson gson = new Gson();
 
-				String input = dataIn.readUTF();
-				System.out.println("Recieved string: " + input);
-				Protocol.Message mes = gson.fromJson(input,
-						Protocol.Message.class);
+            while (true) {
 
-				System.out.println(mes.startTime);
-				System.out.println(new Timestamp(mes.startTime) + "  ;  "
-						+ new Timestamp(mes.endTime));
-				List<String> startingFiles = base.findFilesWithTime(
-						mes.startTime, mes.endTime);
+                String input = dataIn.readUTF();
+                System.out.println("Recieved string: " + input);
+                Protocol.Message mes = gson.fromJson(input, Protocol.Message.class);
 
-				System.out.printf("I need files: %s\n", startingFiles);
+                System.out.println(mes.startTime);
+                System.out.println(new Timestamp(mes.startTime) + "  ;  " + new Timestamp(mes.endTime));
+                List<String> startingFiles = base.findFilesWithTime(mes.startTime, mes.endTime);
 
-				TempFileInfo[] fileToWrite = new TempFileInfo[startingFiles
-						.size()];
+                System.out.printf("I need files: %s\n", startingFiles);
 
-				Protocol.Response res = new Protocol.Response();
-				res.sections = new Protocol.Section[startingFiles.size()];
-				if (startingFiles.size() == 0) {
-					dataOut.writeUTF(gson.toJson(res));
-					continue;
-				}
+                Protocol.Response res = buildResponse(startingFiles, base);
+                
+                if (startingFiles.size() == 0) {
+                    dataOut.writeUTF(gson.toJson(res));
+                    continue;
+                }
 
-				for (int i = 0; i < startingFiles.size(); i++) {
-					String file = startingFiles.get(i);
+                TempFileInfo[] filesToWrite = buildFileWriteInfo(startingFiles, base);
 
-					Protocol.Section sec = new Protocol.Section();
-					FileInfo info = base.getFileInfo(file);
+               shortenFirstMessage(mes, res, filesToWrite);
 
-					sec.length = info.length;
-					sec.startTime = info.startTime;
-					sec.endTime = info.endTime;
-					res.sections[i] = sec;
+               shortenLastMessage(mes, res, filesToWrite);
+                
 
-					fileToWrite[i] = new TempFileInfo();
-					fileToWrite[i].file = file;
-					fileToWrite[i].length = info.length;
-					fileToWrite[i].offset = 0;
+                dataOut.writeUTF(gson.toJson(res));
 
-				}
+                writeFiles(dataOut, filesToWrite);
 
-				Protocol.Section info = res.sections[0];
+            }
+        } catch (EOFException e) {
+            System.out.println("Socket closed");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    
+    private Protocol.Response buildResponse(List<String> filesToSend, StorageDatabase database) {
+        Protocol.Response res = new Protocol.Response();
+        res.sections = new Protocol.Section[filesToSend.size()];
 
-				if (mes.startTime > info.startTime) {
+        for (int i = 0; i < filesToSend.size(); i++) {
+            String file = filesToSend.get(i);
 
-					long sizeOfFirst = info.length;
-					long timeDeltaFirst = info.endTime - info.startTime;
-					long timeToSkipFirst = mes.startTime - info.startTime;
-					System.out.println(timeToSkipFirst + " " + timeDeltaFirst);
+            FileInfo info = database.getFileInfo(file);
 
-					// long exactStartingPlace = (timeToSkip * sizeOfFirst)/
-					// timeDelta;
+            Protocol.Section sec = new Protocol.Section();
+            sec.length = info.length;
+            sec.startTime = info.startTime;
+            sec.endTime = info.endTime;
+            res.sections[i] = sec;
 
-					double startingPlace = ((double) timeToSkipFirst)
-							/ ((double) timeDeltaFirst)
-							* ((double) sizeOfFirst);
-					long exactStartingPlace = (long) startingPlace;
-					if (exactStartingPlace % 2 != 0)
-						exactStartingPlace--;
+        }
 
-					System.out.println(exactStartingPlace);
-					long sizeOfFirstMessage = sizeOfFirst - exactStartingPlace;
+        return res;
 
-					res.sections[0].startTime = mes.startTime;
-					res.sections[0].length = sizeOfFirstMessage;
+    }
 
-					fileToWrite[0].offset = exactStartingPlace;
-					fileToWrite[0].length = sizeOfFirstMessage;
-				}
+    private TempFileInfo[] buildFileWriteInfo(List<String> filesToSend, StorageDatabase database) {
 
-				Protocol.Section info2 = res.sections[res.sections.length -1];;
+        TempFileInfo[] filesToWrite = new TempFileInfo[filesToSend.size()];
+        for (int i = 0; i < filesToSend.size(); i++) {
 
-				if (mes.endTime < info2.endTime) {
+            String file = filesToSend.get(i);
+            FileInfo info = database.getFileInfo(file);
 
-					long sizeOfSecond = info2.length;
-					long timeDeltaLast = info2.endTime - info2.startTime;
-					long timeNeededLast = mes.endTime - info2.startTime;
+            filesToWrite[i] = new TempFileInfo();
+            filesToWrite[i].file = file;
+            filesToWrite[i].length = info.length;
+            filesToWrite[i].offset = 0;
+        }
+        return filesToWrite;
+    }
+    
 
-					double endingPlace = (double) timeNeededLast
-							/ (double) timeDeltaLast * (double) sizeOfSecond;
-					long exactEndingPlace = (long) (endingPlace + .5);
-					if (exactEndingPlace % 2 != 0)
-						exactEndingPlace++;
+    private void shortenLastMessage(Protocol.Message mes, Protocol.Response res, TempFileInfo[] filesToWrite) {
+        int index = res.sections.length -1;
+        Protocol.Section info2 = res.sections[index];
+        
 
-					if (exactEndingPlace > sizeOfSecond)
-						exactEndingPlace = sizeOfSecond; // Missing bytes at end
+        if (mes.endTime < info2.endTime) {
 
-					res.sections[startingFiles.size() - 1].endTime = mes.endTime;
-					res.sections[startingFiles.size() - 1].length = exactEndingPlace;
+            long offset = getOffset(mes, info2);
 
-					fileToWrite[startingFiles.size() - 1].length = exactEndingPlace;
-				}
+            res.sections[index].endTime = mes.endTime;
+            res.sections[index].length = offset;
 
-				dataOut.writeUTF(gson.toJson(res));
+            filesToWrite[index].length = offset;
+        }
+    }
 
-				for (TempFileInfo info3 : fileToWrite) {
-					File f = new File(Constants.getRoot(),info3.file + "-0");
-					try (FileInputStream in = new FileInputStream(f)) {
-						long numOfBytes = IOUtils.copyLarge(in, dataOut,
-								info3.offset, info3.length);
-						System.out.println(f.getAbsolutePath() + " : "
-								+ numOfBytes);
-					}
-				}
+    private void shortenFirstMessage(Protocol.Message mes, Protocol.Response res, TempFileInfo[] filesToWrite) {
+        Protocol.Section info = res.sections[0];
 
-			}
-		} catch (EOFException e) {
-			System.out.println("Socket closed");
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+        if (mes.startTime > info.startTime) {
+
+            long offset =  getOffset(mes, info);
+            
+           
+            
+            long newLength = info.length - offset;
+
+            res.sections[0].startTime = mes.startTime;
+            res.sections[0].length = newLength;
+
+            filesToWrite[0].offset = offset;
+            filesToWrite[0].length = newLength;
+        }
+    }
+
+    private long getOffset(Protocol.Message mes, Protocol.Section info) {
+        long sizeOfFirst = info.length;
+        long timeDeltaFirst = info.endTime - info.startTime;
+        long timeToSkipFirst = mes.startTime - info.startTime;
+        System.out.println(timeToSkipFirst + " " + timeDeltaFirst);
+
+        // long exactStartingPlace = (timeToSkip * sizeOfFirst)/
+        // timeDelta;
+
+        double startingPlace = ((double) timeToSkipFirst) / ((double) timeDeltaFirst) * ((double) sizeOfFirst);
+        long offset = (long) startingPlace; 
+        if (offset % 2 != 0)
+            offset ++;
+        
+        if (offset < 0)
+            offset = 0;
+        if (offset > info.length)
+            offset = info.length;
+        
+        return offset;
+    }
+
+    private void writeFiles(DataOutputStream dataOut, TempFileInfo[] fileToWrite) throws IOException, FileNotFoundException {
+        for (TempFileInfo info3 : fileToWrite) {
+            File f = new File(Constants.getRoot(), info3.file + "-0");
+            try (FileInputStream in = new FileInputStream(f)) {
+                long numOfBytes = IOUtils.copyLarge(in, dataOut, info3.offset, info3.length);
+                System.out.println(f.getAbsolutePath() + " : " + numOfBytes);
+            }
+        }
+    }
 
 }
 
 public class Server implements Runnable {
 
-	Thread serverAcceptingThread;
-	ServerSocket mySocket;
+    Thread serverAcceptingThread;
+    ServerSocket mySocket;
 
-	public Server() {
-		try {
-			mySocket = new ServerSocket(5632);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		serverAcceptingThread = new Thread(this);
-		serverAcceptingThread.start();
-	}
+    public Server() {
+        try {
+            mySocket = new ServerSocket(5632);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        serverAcceptingThread = new Thread(this);
+        serverAcceptingThread.start();
+    }
 
-	@Override
-	public void run() {
-		List<Thread> childeren = new ArrayList<>();
-		try {
+    @Override
+    public void run() {
+        List<Thread> childeren = new ArrayList<>();
+        try {
 
-			while (true) {
+            while (true) {
 
-				Socket s = mySocket.accept();
-				Connection c = new Connection(s);
-				Thread connectionThread = new Thread(c);
-				connectionThread.start();
-				childeren.add(connectionThread);
+                Socket s = mySocket.accept();
+                Connection c = new Connection(s);
+                Thread connectionThread = new Thread(c);
+                connectionThread.start();
+                childeren.add(connectionThread);
 
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			for (Thread child : childeren) {
-				try {
-					child.join();
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-		}
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            for (Thread child : childeren) {
+                try {
+                    child.join();
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+        }
 
-	}
+    }
 
-	void close() {
-		try {
-			Thread.sleep(100000);
-		} catch (InterruptedException e2) {
-			// TODO Auto-generated catch block
-			e2.printStackTrace();
-		}
-		try {
-			mySocket.close();
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
+    void close() {
+        try {
+            Thread.sleep(100000);
+        } catch (InterruptedException e2) {
+            // TODO Auto-generated catch block
+            e2.printStackTrace();
+        }
+        try {
+            mySocket.close();
+        } catch (IOException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
 
-		try {
-			serverAcceptingThread.join();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
+        try {
+            serverAcceptingThread.join();
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
 
 }
