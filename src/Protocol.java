@@ -6,6 +6,7 @@ static public class Message
 {
 	long startTime;
 	long endTime;
+	int resolution;
 }
 
 static public class Response
