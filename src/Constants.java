@@ -4,6 +4,7 @@ import java.net.URISyntaxException;
 
 public class Constants {
 	private static File root;
+	private static File sourceRoot;
 	
 	static {
 		try {
@@ -20,9 +21,26 @@ public class Constants {
 		}
 	}
 	
+	
+	static {
+	    if(System.getProperty("os.name").contains("Windows"))
+	        sourceRoot = new File("C:\\WINDOWS\\Temp\\CSNService");
+	     else
+	        sourceRoot = new File("/var/tmp/CSNDaemon");
+	}
+	
 	public static File getRoot()
 	{
 		return root;
+	}
+	
+	
+	
+	
+	
+	public static File getRootOfSource()
+	{
+	    return sourceRoot;
 	}
 	
 

@@ -15,6 +15,7 @@ public class Main {
 		System.out.println(System.getProperty("user.dir"));
 
 		System.out.println(Constants.getRoot().getAbsolutePath());
+		System.out.println(Constants.getRootOfSource());
 
 		StorageDatabase storage = new StorageDatabase();
 		ConfigFile config = new ConfigFile();
@@ -28,7 +29,7 @@ public class Main {
 
 				Map<String, String> data = MetadataParser
 						.parseMetadata(new File(
-								"C:\\Windows\\Temp\\CSNService", startingFile
+								Constants.getRootOfSource(), startingFile
 										+ "-metadata"));
 				//System.out.println(data);
 
@@ -42,7 +43,7 @@ public class Main {
 				try {
 
 					FileChannel file0 = FileChannel.open(new File(
-							"C:\\Windows\\Temp\\CSNService", startingFile
+					        Constants.getRootOfSource(), startingFile
 									+ "-0").toPath(), StandardOpenOption.READ);
 					FileChannel fileOut0 = FileChannel.open(
 							new File(Constants.getRoot(), startingFile + "-0")
@@ -59,7 +60,7 @@ public class Main {
 					else
 						storage.updateEndTimeAndLength("" + startingFile, endTime,numOfBytesInFile);
 
-					File nextInList = new File("C:\\Windows\\Temp\\CSNService",
+					File nextInList = new File(Constants.getRootOfSource(),
 							(startingFile + 1) + "-0");
 
 					if (nextInList.exists()) {

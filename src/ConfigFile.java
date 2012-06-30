@@ -28,13 +28,34 @@ public class ConfigFile {
 	Gson gson;
 	public ConfigFile() {
 		
+	    gson = new GsonBuilder().setPrettyPrinting().create();
+	    
 		File root = Constants.getRoot();
 		configurationFile = new File(root,"config.json");
-	
-		gson = new GsonBuilder().setPrettyPrinting().create();
-				
+
+		if (configurationFile.exists())
 		config = gson.fromJson(readString(), Configuration.class);
-		
+		else
+		{
+		    config = new Configuration();
+		    
+		    
+		    File sourceRoot = Constants.getRootOfSource();
+		    
+		    int firstGoodOne = 0;
+		    while (true)
+		    {
+		        File test = new File(sourceRoot,String.format("%d-timecode", firstGoodOne));
+		        if (test.exists())
+		            break;
+		        
+		        firstGoodOne++;
+		    }
+		    
+		    config.currentInFile = firstGoodOne;
+		    config.currentOutFile = 0;
+		    config.currentFileLocation = 0;
+		}
 		
 	}
 	
