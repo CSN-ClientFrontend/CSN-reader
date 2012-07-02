@@ -66,13 +66,13 @@ class Connection implements Runnable {
                     continue;
                 }
 
-                TempFileInfo[] filesToWrite = buildFileWriteInfo(startingFiles, base,mes.resolution);
+                TempFileInfo[] filesToWrite = buildFileWriteInfo(startingFiles, base);
 
-               shortenFirstMessage(mes, res, filesToWrite,mes.resolution);
-
-               shortenLastMessage(mes, res, filesToWrite,mes.resolution);
+                shortenFirstMessage(mes, res, filesToWrite);
+ 
+                shortenLastMessage(mes, res, filesToWrite);
                 
-               fixResponse(res, mes.resolution);
+                fixResponse(res, filesToWrite, mes.resolution);
 
                 dataOut.writeUTF(gson.toJson(res));
 
@@ -110,25 +110,21 @@ class Connection implements Runnable {
 
     }
     
-    private void fixResponse(Protocol.Response res, int resolution)
+    private void fixResponse(Protocol.Response res, TempFileInfo[] fileDatas, int resolution)
     
     {
-        for (int i = 1; i < res.sections.length-1; i++) {
+        for (int i = 0; i < res.sections.length; i++) {
            
             Protocol.Section sec =  res.sections[i];
+            TempFileInfo data = fileDatas[i];
             
             
-            long actualLength = sec.length/resolution;
-            if (actualLength%2 != 0)
-                actualLength--;
-            
-           
-            sec.length = actualLength;
+             shortenFile(sec, data , resolution);
 
         }
     }
 
-    private TempFileInfo[] buildFileWriteInfo(List<String> filesToSend, StorageDatabase database, int resolution) {
+    private TempFileInfo[] buildFileWriteInfo(List<String> filesToSend, StorageDatabase database) {
 
         TempFileInfo[] filesToWrite = new TempFileInfo[filesToSend.size()];
         for (int i = 0; i < filesToSend.size(); i++) {
@@ -136,20 +132,28 @@ class Connection implements Runnable {
             String file = filesToSend.get(i);
             FileInfo info = database.getFileInfo(file);
 
-            long actualLength = info.length/resolution;
-            if (actualLength%2 != 0)
-                actualLength--;
+        
             
             filesToWrite[i] = new TempFileInfo();
             filesToWrite[i].file = file;
             filesToWrite[i].length = info.length;
             filesToWrite[i].offset = 0;
-            filesToWrite[i].actualLength = actualLength;
+            
         }
         return filesToWrite;
     }
 
-    private void shortenLastMessage(Protocol.Message mes, Protocol.Response res, TempFileInfo[] filesToWrite, int resolution) {
+    private void shortenFile(Protocol.Section sec, TempFileInfo fileData, int resolution)
+    {
+        long actualLength = sec.length/resolution;
+        if (actualLength%2 != 0)
+            actualLength--;
+        
+        sec.length = actualLength;
+        fileData.actualLength = actualLength;
+    }
+    
+    private void shortenLastMessage(Protocol.Message mes, Protocol.Response res, TempFileInfo[] filesToWrite) {
         int index = res.sections.length -1;
         Protocol.Section info2 = res.sections[index];
         
@@ -160,19 +164,17 @@ class Connection implements Runnable {
 
             res.sections[index].endTime = mes.endTime;
             
-            long actualLength = length/resolution;
-            if (actualLength%2 != 0)
-                actualLength--;
+         
             
             
-            res.sections[index].length = actualLength;
-
+            res.sections[index].length = length;
             filesToWrite[index].length = length;
-            filesToWrite[index].actualLength = actualLength;
+         
         }
     }
 
-    private void shortenFirstMessage(Protocol.Message mes, Protocol.Response res, TempFileInfo[] filesToWrite, int resolution) {
+    
+    private void shortenFirstMessage(Protocol.Message mes, Protocol.Response res, TempFileInfo[] filesToWrite) {
         Protocol.Section info = res.sections[0];
 
         if (mes.startTime > info.startTime) {
@@ -182,18 +184,15 @@ class Connection implements Runnable {
             
             long newLength = info.length - offset;
 
-            
-            long actualLength = newLength/resolution;
-            if (actualLength%2 != 0)
-                actualLength--;
+     
             
             
             res.sections[0].startTime = mes.startTime;
-            res.sections[0].length = actualLength;
+            res.sections[0].length = newLength;
 
             filesToWrite[0].offset = offset;
             filesToWrite[0].length = newLength;
-            filesToWrite[0].actualLength = actualLength;
+     
         }
     }
 
