@@ -18,7 +18,6 @@ public class ConfigFile {
 	class Configuration
 	{
 		int currentInFile;
-		int currentOutFile;
 		int currentFileLocation;
 	}
 	
@@ -53,7 +52,6 @@ public class ConfigFile {
 		    }
 		    
 		    config.currentInFile = firstGoodOne;
-		    config.currentOutFile = 0;
 		    config.currentFileLocation = 0;
 		}
 		
@@ -65,10 +63,7 @@ public class ConfigFile {
 		return config.currentInFile;
 	}
 	
-	public int getCurrentOutFile()
-	{
-		return config.currentOutFile;
-	}
+	
 	
 	public int getCurrentFileLocation()
 	{
@@ -82,10 +77,6 @@ public class ConfigFile {
 	}
 	
 	
-	public void incrementCurrentOutFile()
-	{
-		config.currentOutFile++;
-	}
 	
 	public void incrementCurrentInFile()
 	{

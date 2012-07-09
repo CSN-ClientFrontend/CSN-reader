@@ -33,6 +33,8 @@ class Connection implements Runnable {
     }
 
  
+    
+    
 
     @Override
     public void run() {
@@ -49,35 +51,23 @@ class Connection implements Runnable {
 
             while (true) {
 
-                String input = dataIn.readUTF();
-                System.out.println("Recieved string: " + input);
-                Protocol.Message mes = gson.fromJson(input, Protocol.Message.class);
-
-                System.out.println(mes.startTime);
-                System.out.println(new Timestamp(mes.startTime) + "  ;  " + new Timestamp(mes.endTime));
-                List<String> startingFiles = base.findFilesWithTime(mes.startTime, mes.endTime);
-
-                System.out.printf("I need files: %s\n", startingFiles);
-
-                Protocol.Response res = buildResponse(startingFiles, base);
+                String input2 = dataIn.readUTF();
+                System.out.println("Recieved string: " + input2);
                 
-                if (startingFiles.size() == 0) {
-                    dataOut.writeUTF(gson.toJson(res));
-                    continue;
-                }
-
-                TempFileInfo[] filesToWrite = buildFileWriteInfo(startingFiles, base);
-
-                shortenFirstMessage(mes, res, filesToWrite);
- 
-                shortenLastMessage(mes, res, filesToWrite);
+                 Protocol.Request req = gson.fromJson(input2, Protocol.Request.class);
+                 
+                 switch(req.type)
+                 {
+                 case RequestData:
+                     handleRequestData(dataIn, dataOut, gson, base);
+                     break;
+                     
+                 case RequestSerials:
+                     handleRequestSerials(dataIn,dataOut,gson,base);
+                     break;
+                 
+                 }
                 
-                fixResponse(res, filesToWrite, mes.resolution);
-
-                dataOut.writeUTF(gson.toJson(res));
-
-                writeFiles(dataOut, filesToWrite,mes.resolution);
-
             }
         } catch (EOFException e) {
             System.out.println("Socket closed");
@@ -86,6 +76,57 @@ class Connection implements Runnable {
         }
     }
     
+    
+    
+    private void handleRequestSerials(DataInputStream dataIn, DataOutputStream dataOut, Gson gson, StorageDatabase base) throws IOException {
+        List<Integer> serials = base.getAllSerials();
+        
+        Protocol.Serials s = new Protocol.Serials();
+        int[] arr = new int[serials.size()];
+        for (int i = 0; i < arr.length;i ++)
+            arr[i] = serials.get(i);
+        
+        s.serialNumbers = arr;
+        
+        dataOut.writeUTF(gson.toJson(s));
+        
+    }
+
+
+
+
+
+    private void handleRequestData(DataInputStream dataIn, DataOutputStream dataOut, Gson gson, StorageDatabase base) throws IOException
+    {
+        
+        String input = dataIn.readUTF();
+        Protocol.Message mes = gson.fromJson(input, Protocol.Message.class);
+
+        System.out.println(mes.startTime);
+        System.out.println(new Timestamp(mes.startTime) + "  ;  " + new Timestamp(mes.endTime));
+        List<String> startingFiles = base.findFilesWithTime(mes.startTime, mes.endTime,mes.serialNumber);
+
+        System.out.printf("I need files: %s\n", startingFiles);
+
+        Protocol.Response res = buildResponse(startingFiles, base);
+        
+        if (startingFiles.size() == 0) {
+            dataOut.writeUTF(gson.toJson(res));
+            return;
+        }
+
+        TempFileInfo[] filesToWrite = buildFileWriteInfo(startingFiles, base);
+
+        shortenFirstMessage(mes, res, filesToWrite);
+
+        shortenLastMessage(mes, res, filesToWrite);
+        
+        fixResponse(res, filesToWrite, mes.resolution);
+
+        dataOut.writeUTF(gson.toJson(res));
+
+        writeFiles(dataOut, filesToWrite,mes.resolution);
+    }
     
     private Protocol.Response buildResponse(List<String> filesToSend, StorageDatabase database) {
         Protocol.Response res = new Protocol.Response();

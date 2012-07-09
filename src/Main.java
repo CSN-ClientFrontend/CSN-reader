@@ -2,6 +2,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 import java.util.Map;
 
 public class Main {
@@ -21,6 +22,10 @@ public class Main {
 		ConfigFile config = new ConfigFile();
 
 		storage.printAllFiles();
+		
+		List<Integer> serials = storage.getAllSerials();
+		for (int serial : serials)
+		    System.out.println(serial);
 
 		while (true) {
 			while (true) {
@@ -39,6 +44,8 @@ public class Main {
 
 				long startTime = Long.parseLong(data.get("begin"));
 				long endTime = Long.parseLong(data.get("end"));
+				
+				int serialNumber = Integer.parseInt(data.get("device.serial"));
 
 				try {
 
@@ -56,7 +63,7 @@ public class Main {
 					System.out.println(numOfBytesInFile);
 
 					if (startingByte == 0)
-						storage.addFile(startingFile + "", startTime, endTime,numOfBytesInFile);
+						storage.addFile(startingFile + "", startTime, endTime,numOfBytesInFile,serialNumber);
 					else
 						storage.updateEndTimeAndLength("" + startingFile, endTime,numOfBytesInFile);
 

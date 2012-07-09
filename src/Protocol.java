@@ -7,6 +7,7 @@ static public class Message
 	long startTime;
 	long endTime;
 	int resolution;
+	int serialNumber;
 }
 
 static public class Response
@@ -22,6 +23,21 @@ static public class Section
 }
 
 
+static public class Serials
+{
+    int[] serialNumbers;
+}
+
+static public class Request
+{
+    enum TypeOfRequest
+    {
+        RequestData,
+        RequestSerials
+    }
+    
+    TypeOfRequest type;
+}
 
 	
 }
