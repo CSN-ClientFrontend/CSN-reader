@@ -68,7 +68,7 @@ public class StorageDatabase {
         try {
             addFile = databaseConn.prepareStatement("INSERT INTO FileList VALUES ( ?, ? ,?, ?,?)");
             printAllFiles = databaseConn.prepareStatement("SELECT * FROM FileList");
-            findFileWithTime = databaseConn.prepareStatement("SELECT * FROM FileList WHERE SerialNumber = ? AND (? BETWEEN StartTime AND EndTime) OR (? BETWEEN StartTime AND EndTime) OR (StartTime BETWEEN ? AND ?) ");
+            findFileWithTime = databaseConn.prepareStatement("SELECT * FROM FileList WHERE SerialNumber = ? AND (? BETWEEN StartTime AND EndTime) OR (? BETWEEN StartTime AND EndTime) OR (StartTime BETWEEN ? AND ?) ORDER BY StartTinme ASC");
             clearAll = databaseConn.prepareStatement("DELETE FROM FileList");
             updateEndTime = databaseConn.prepareStatement("UPDATE FileList SET EndTime = ?, Length = ? WHERE FileName =?");
             getFileInfo = databaseConn.prepareStatement("SELECT * FROM FileList WHERE FileName = ?");
@@ -136,9 +136,9 @@ public class StorageDatabase {
         }
     }
 
-    public List<String> findFilesWithTime(long startTime, long endTime, int serialNumber) {
+    public List<FileInfo> findFilesWithTime(long startTime, long endTime, int serialNumber) {
         try {
-            List<String> results = new ArrayList<>();
+            List<FileInfo> results = new ArrayList<>();
             findFileWithTime.setInt(1, serialNumber);
             findFileWithTime.setTimestamp(2, new Timestamp(startTime));
             findFileWithTime.setTimestamp(3, new Timestamp(endTime));
@@ -146,7 +146,8 @@ public class StorageDatabase {
             findFileWithTime.setTimestamp(5, new Timestamp(endTime));
             ResultSet result = findFileWithTime.executeQuery();
             while (result.next()) {
-                results.add(result.getString("FileName"));
+               
+                results.add(getFileFromResult(result));
             }
             result.close();
             return results;
@@ -158,18 +159,26 @@ public class StorageDatabase {
 
     }
 
+    
+    private FileInfo getFileFromResult(ResultSet res) throws SQLException
+    {
+        FileInfo answer = new FileInfo();
+        answer.fileName = res.getString("FileName");
+        answer.startTime = res.getTimestamp("StartTime").getTime();
+        answer.endTime = res.getTimestamp("EndTime").getTime();
+        answer.length = res.getLong("Length");
+        answer.serialNumber = res.getInt("SerialNumber");
+        
+        return answer;
+    }
+    
     public FileInfo getFileInfo(String filename) {
         try {
             getFileInfo.setString(1, filename);
             ResultSet res = getFileInfo.executeQuery();
             res.next();
 
-            FileInfo answer = new FileInfo();
-            answer.fileName = res.getString("FileName");
-            answer.startTime = res.getTimestamp("StartTime").getTime();
-            answer.endTime = res.getTimestamp("EndTime").getTime();
-            answer.length = res.getLong("Length");
-            answer.serialNumber = res.getInt("SerialNumber");
+           FileInfo answer = getFileFromResult(res);
 
             res.close();
 

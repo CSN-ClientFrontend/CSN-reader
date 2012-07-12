@@ -104,7 +104,7 @@ class Connection implements Runnable {
 
         System.out.println(mes.startTime);
         System.out.println(new Timestamp(mes.startTime) + "  ;  " + new Timestamp(mes.endTime));
-        List<String> startingFiles = base.findFilesWithTime(mes.startTime, mes.endTime,mes.serialNumber);
+        List<FileInfo> startingFiles = base.findFilesWithTime(mes.startTime, mes.endTime,mes.serialNumber);
 
         System.out.printf("I need files: %s\n", startingFiles);
 
@@ -128,14 +128,13 @@ class Connection implements Runnable {
         writeFiles(dataOut, filesToWrite,mes.resolution);
     }
     
-    private Protocol.Response buildResponse(List<String> filesToSend, StorageDatabase database) {
+    private Protocol.Response buildResponse(List<FileInfo> startingFiles, StorageDatabase database) {
         Protocol.Response res = new Protocol.Response();
-        res.sections = new Protocol.Section[filesToSend.size()];
+        res.sections = new Protocol.Section[startingFiles.size()];
 
-        for (int i = 0; i < filesToSend.size(); i++) {
-            String file = filesToSend.get(i);
+        for (int i = 0; i < startingFiles.size(); i++) {
+            FileInfo info = startingFiles.get(i);
 
-            FileInfo info = database.getFileInfo(file);
 
            
             
@@ -165,18 +164,18 @@ class Connection implements Runnable {
         }
     }
 
-    private TempFileInfo[] buildFileWriteInfo(List<String> filesToSend, StorageDatabase database) {
+    private TempFileInfo[] buildFileWriteInfo(List<FileInfo> startingFiles, StorageDatabase database) {
 
-        TempFileInfo[] filesToWrite = new TempFileInfo[filesToSend.size()];
-        for (int i = 0; i < filesToSend.size(); i++) {
+        TempFileInfo[] filesToWrite = new TempFileInfo[startingFiles.size()];
+        for (int i = 0; i < startingFiles.size(); i++) {
 
-            String file = filesToSend.get(i);
-            FileInfo info = database.getFileInfo(file);
+            
+            FileInfo info =  startingFiles.get(i);
 
         
             
             filesToWrite[i] = new TempFileInfo();
-            filesToWrite[i].file = file;
+            filesToWrite[i].file = info.fileName;
             filesToWrite[i].length = info.length;
             filesToWrite[i].offset = 0;
             
