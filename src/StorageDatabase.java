@@ -68,7 +68,7 @@ public class StorageDatabase {
         try {
             addFile = databaseConn.prepareStatement("INSERT INTO FileList VALUES ( ?, ? ,?, ?,?)");
             printAllFiles = databaseConn.prepareStatement("SELECT * FROM FileList");
-            findFileWithTime = databaseConn.prepareStatement("SELECT * FROM FileList WHERE SerialNumber = ? AND (? BETWEEN StartTime AND EndTime) OR (? BETWEEN StartTime AND EndTime) OR (StartTime BETWEEN ? AND ?) ORDER BY StartTinme ASC");
+            findFileWithTime = databaseConn.prepareStatement("SELECT * FROM FileList WHERE SerialNumber = ? AND (? BETWEEN StartTime AND EndTime) OR (? BETWEEN StartTime AND EndTime) OR (StartTime BETWEEN ? AND ?) ORDER BY StartTime ASC");
             clearAll = databaseConn.prepareStatement("DELETE FROM FileList");
             updateEndTime = databaseConn.prepareStatement("UPDATE FileList SET EndTime = ?, Length = ? WHERE FileName =?");
             getFileInfo = databaseConn.prepareStatement("SELECT * FROM FileList WHERE FileName = ?");
