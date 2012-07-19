@@ -19,28 +19,28 @@ public class ServerTest {
 	 * @throws Exception 
 	 */
 	public static void main(String[] args) throws Exception {
-		Socket b = new Socket();
-		b.connect(new InetSocketAddress("127.0.0.1", 5632));
-		DataOutputStream out = new DataOutputStream(b.getOutputStream());
-		out.writeUTF("{ \"startTime\":1340549210000, \"endTime\": 1340572221000   }");
-		
-		DataInputStream in = new DataInputStream(b.getInputStream());
-		String s = in.readUTF();
-		System.out.println(s);
-		
-		Gson g = new Gson();
-		Protocol.Response res = g.fromJson(s, Protocol.Response.class);
-		
-		for (Protocol.Section sect : res.sections)
-		{
-			System.out.println(sect.length);
-			byte[] buffer = new byte[(int) sect.length];
-			IOUtils.readFully(in, buffer);
-			
-		}
-		
-		System.out.println("I have read all the fun");
-		b.close();
+//		Socket b = new Socket();
+//		b.connect(new InetSocketAddress("127.0.0.1", 5632));
+//		DataOutputStream out = new DataOutputStream(b.getOutputStream());
+//		out.writeUTF("{ \"startTime\":1340549210000, \"endTime\": 1340572221000   }");
+//		
+//		DataInputStream in = new DataInputStream(b.getInputStream());
+//		String s = in.readUTF();
+//		System.out.println(s);
+//		
+//		Gson g = new Gson();
+//		Protocol.Response res = g.fromJson(s, Protocol.Response.class);
+//		
+//		for (Protocol.Section sect : res.sections)
+//		{
+//			System.out.println(sect.length);
+//			byte[] buffer = new byte[(int) sect.length];
+//			IOUtils.readFully(in, buffer);
+//			
+//		}
+//		
+//		System.out.println("I have read all the fun");
+//		b.close();
 
 	}
 

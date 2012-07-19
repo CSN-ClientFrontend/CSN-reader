@@ -81,7 +81,7 @@ class Connection implements Runnable {
     private void handleRequestSerials(DataInputStream dataIn, DataOutputStream dataOut, Gson gson, StorageDatabase base) throws IOException {
         List<Integer> serials = base.getAllSerials();
         
-        Protocol.Serials s = new Protocol.Serials();
+        Protocol.RequestSerials.SerialsResponse s = new Protocol.RequestSerials.SerialsResponse();
         int[] arr = new int[serials.size()];
         for (int i = 0; i < arr.length;i ++)
             arr[i] = serials.get(i);
@@ -100,7 +100,7 @@ class Connection implements Runnable {
     {
         
         String input = dataIn.readUTF();
-        Protocol.Message mes = gson.fromJson(input, Protocol.Message.class);
+        Protocol.RequestData.RequestMessageParameters mes = gson.fromJson(input, Protocol.RequestData.RequestMessageParameters.class);
 
         System.out.println(mes.startTime);
         System.out.println(new Timestamp(mes.startTime) + "  ;  " + new Timestamp(mes.endTime));
@@ -108,7 +108,7 @@ class Connection implements Runnable {
 
         System.out.printf("I need files: %s\n", startingFiles);
 
-        Protocol.Response res = buildResponse(startingFiles, base);
+        Protocol.RequestData.ResponseMetadata res = buildResponse(startingFiles, base);
         
         if (startingFiles.size() == 0) {
             dataOut.writeUTF(gson.toJson(res));
@@ -128,17 +128,19 @@ class Connection implements Runnable {
         writeFiles(dataOut, filesToWrite,mes.resolution);
     }
     
-    private Protocol.Response buildResponse(List<FileInfo> startingFiles, StorageDatabase database) {
-        Protocol.Response res = new Protocol.Response();
-        res.sections = new Protocol.Section[startingFiles.size()];
+    private Protocol.RequestData.ResponseMetadata buildResponse(List<FileInfo> startingFiles, StorageDatabase database) {
+        Protocol.RequestData.ResponseMetadata res = new Protocol.RequestData.ResponseMetadata();
+        res.sections = new  Protocol.RequestData.SectionMetada[startingFiles.size()];
 
+       
+        
         for (int i = 0; i < startingFiles.size(); i++) {
             FileInfo info = startingFiles.get(i);
 
 
            
             
-            Protocol.Section sec = new Protocol.Section();
+            Protocol.RequestData.SectionMetada sec = new Protocol.RequestData.SectionMetada();
             sec.length = info.length;
             sec.startTime = info.startTime;
             sec.endTime = info.endTime;
@@ -150,12 +152,12 @@ class Connection implements Runnable {
 
     }
     
-    private void fixResponse(Protocol.Response res, TempFileInfo[] fileDatas, int resolution)
+    private void fixResponse(Protocol.RequestData.ResponseMetadata res, TempFileInfo[] fileDatas, int resolution)
     
     {
         for (int i = 0; i < res.sections.length; i++) {
            
-            Protocol.Section sec =  res.sections[i];
+            Protocol.RequestData.SectionMetada sec =  res.sections[i];
             TempFileInfo data = fileDatas[i];
             
             
@@ -183,7 +185,7 @@ class Connection implements Runnable {
         return filesToWrite;
     }
 
-    private void shortenFile(Protocol.Section sec, TempFileInfo fileData, int resolution)
+    private void shortenFile(Protocol.RequestData.SectionMetada sec, TempFileInfo fileData, int resolution)
     {
         long actualLength = sec.length/resolution;
         if (actualLength%2 != 0)
@@ -193,9 +195,9 @@ class Connection implements Runnable {
         fileData.actualLength = actualLength;
     }
     
-    private void shortenLastMessage(Protocol.Message mes, Protocol.Response res, TempFileInfo[] filesToWrite) {
+    private void shortenLastMessage(Protocol.RequestData.RequestMessageParameters mes, Protocol.RequestData.ResponseMetadata res, TempFileInfo[] filesToWrite) {
         int index = res.sections.length -1;
-        Protocol.Section info2 = res.sections[index];
+        Protocol.RequestData.SectionMetada info2 = res.sections[index];
         
 
         if (mes.endTime < info2.endTime) {
@@ -214,8 +216,8 @@ class Connection implements Runnable {
     }
 
     
-    private void shortenFirstMessage(Protocol.Message mes, Protocol.Response res, TempFileInfo[] filesToWrite) {
-        Protocol.Section info = res.sections[0];
+    private void shortenFirstMessage(Protocol.RequestData.RequestMessageParameters mes,Protocol.RequestData.ResponseMetadata res, TempFileInfo[] filesToWrite) {
+        Protocol.RequestData.SectionMetada info = res.sections[0];
 
         if (mes.startTime > info.startTime) {
 
@@ -236,7 +238,7 @@ class Connection implements Runnable {
         }
     }
 
-    private long getOffset(Protocol.Section info, long until) {
+    private long getOffset(Protocol.RequestData.SectionMetada info, long until) {
         long sizeOfFirst = info.length;
         long timeDeltaFirst = info.endTime - info.startTime;
         long timeToSkipFirst = until - info.startTime;
