@@ -28,6 +28,11 @@ public class StorageDatabase {
     private PreparedStatement updateEndTime;
     private PreparedStatement getFileInfo;
     private PreparedStatement getAllSerials;
+    
+    private PreparedStatement removeQueueListItem;
+    private PreparedStatement addQueueListItem;
+    private PreparedStatement getQueueListItems;
+    private PreparedStatement updateQueueListLastTime;
 
     public StorageDatabase() {
 
@@ -73,13 +78,99 @@ public class StorageDatabase {
             updateEndTime = databaseConn.prepareStatement("UPDATE FileList SET EndTime = ?, Length = ? WHERE FileName =?");
             getFileInfo = databaseConn.prepareStatement("SELECT * FROM FileList WHERE FileName = ?");
             getAllSerials = databaseConn.prepareStatement("SELECT DISTINCT SerialNumber FROM FileList");
+            
+            removeQueueListItem = databaseConn.prepareStatement("DELETE FROM QueueList WHERE Id = ?");
+            addQueueListItem = databaseConn.prepareStatement("INSERT INTO QueueList (Url, Port, LastTime, TimeBetween) VALUES (?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+            getQueueListItems = databaseConn.prepareStatement("SELECT * FROM QueueList");
+            updateQueueListLastTime = databaseConn.prepareStatement("UPDATE QueueList SET LastTime = ? WHERE Id = ?");
         } catch (SQLException e1) {
             // TODO Auto-generated catch block
             e1.printStackTrace();
         }
 
     }
+    
+    
+    List<QueueObject> getQueueListItems()
+    {
+        List<QueueObject> result = new ArrayList<>();
+        try (ResultSet set = getQueueListItems.executeQuery())
+        {
+            while (set.next())
+            {
+                QueueObject obj = new QueueObject();
+                
+                obj.id = set.getLong("Id");
+                obj.lastTime = set.getTimestamp("LastTime").getTime();
+                obj.timeBetween = set.getLong("TimeBetween");
+                obj.url = set.getString("Url");
+                obj.port = set.getInt("Port");
+                
+                result.add(obj);
+            }
+            
+        } catch (SQLException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+        return result;
+    }
+    
+    public void updateQueueListLastTime(long lastTime, long id)
+    {
+        try
+        {
+            updateQueueListLastTime.setTimestamp(1, new Timestamp(lastTime));
+            updateQueueListLastTime.setLong(2, id);
+          
+            updateQueueListLastTime.execute();
+            
+            
+        }
+        catch (SQLException e)
+        {
+            e.printStackTrace();
+        }
+    }
+    
+    public long addQueueListItem(QueueObject object)
+    {
+        long answer = -1;
+        try
+        {
+            addQueueListItem.setString(1, object.url);
+            addQueueListItem.setInt(2,object.port);
+            addQueueListItem.setTimestamp(3, new Timestamp(object.lastTime));
+            addQueueListItem.setLong(4, object.timeBetween);
+            addQueueListItem.execute();
+            ResultSet result = addQueueListItem.getGeneratedKeys();
+            result.next();
+            answer = result.getLong(1);
+            result.close();
+            
+        }
+        catch (SQLException e)
+        {
+            e.printStackTrace();
+        }
+        
+        return answer;
+    }
 
+    
+    public void removeQueueListItem(long id)
+    {
+        try {
+            removeQueueListItem.setLong(1, id);
+            removeQueueListItem.execute();
+        } catch (SQLException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+    }
+    
     public List<Integer> getAllSerials() {
 
         ArrayList<Integer> serials = new ArrayList<>();
@@ -90,7 +181,7 @@ public class StorageDatabase {
             }
 
         } catch (SQLException e) {
-
+                e.printStackTrace();
         }
 
         return serials;
@@ -176,8 +267,11 @@ public class StorageDatabase {
         try {
             getFileInfo.setString(1, filename);
             ResultSet res = getFileInfo.executeQuery();
-            res.next();
-
+            
+            
+            if (!res.next())
+                return null; 
+            
            FileInfo answer = getFileFromResult(res);
 
             res.close();
@@ -190,10 +284,28 @@ public class StorageDatabase {
         return null;
 
     }
+    
+    
+    public boolean fileExists(String filename)
+    {
+        return (getFileInfo(filename) != null);
+    }
+    
+    public String getUniqueString(String startingFilename)
+    {
+        // Forgive me for my sins
+        while (fileExists(startingFilename))
+        {
+            startingFilename += "a";
+        }
+        
+        return startingFilename;
+    }
 
     private void initializeDatabase() throws SQLException {
         Statement stat = databaseConn.createStatement();
-        stat.execute("CREATE TABLE FileList (FileName VARCHAR(255) NOT NULL UNIQUE, StartTime TIMESTAMP NOT NULL, EndTime TIMESTAMP NOT NULL, Length INTEGER NOT NULL, SerialNumber INTEGER NOT NULL)");
+        stat.execute("CREATE TABLE FileList (FileName VARCHAR(255) NOT NULL UNIQUE, StartTime TIMESTAMP NOT NULL, EndTime TIMESTAMP NOT NULL, Length INTEGER NOT NULL, SerialNumber INTEGER NOT NULL)");        
+        stat.execute("CREATE TABLE QueueList (Id BIGINT NOT NULL AUTO_INCREMENT, Url VARCHAR(255) NOT NULL, Port INT NOT NULL, LastTime TIMESTAMP NOT NULL, TimeBetween BIGINT NOT NULL) ");
     }
 
     public void clearAll() {

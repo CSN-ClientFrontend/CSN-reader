@@ -25,13 +25,55 @@ public abstract class Protocol {
             int[] serialNumbers;
         }
     }
+    
+    
+    static public class PushQueue {
+        static public class PushQueueAddRequest
+        {
+            long timeBetween;
+            String url;
+            int port;
+            
+        }
+        
+        static public class PushQueueAddResponse
+        {
+            long id;
+        }
+        
+        static public class PushQueueRemoveRequest
+        {
+            long id;
+        }
+        
+        static public class PushQueueRemoveResponse
+        {
+            boolean success;
+        }
+        
+        static public class PushQueueItem
+        {
+            long timeBetween;
+            long lastTime;
+            String url;
+            int port;
+            long id;
+        }
+        
+        static public class PushQueueDisplayResponse
+        {
+            PushQueueItem[] items;
+        }
+    }
 
     static public class Request {
         enum TypeOfRequest {
-            RequestData, RequestSerials
+            RequestData, RequestSerials, PushQueueDisplayRequest, PushQueueAddRequest, PushQueueRemoveRequest
         }
 
         TypeOfRequest type;
     }
+    
+    
 
 }

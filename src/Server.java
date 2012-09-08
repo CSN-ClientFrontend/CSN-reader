@@ -9,6 +9,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.nio.ShortBuffer;
 import java.util.ArrayList;
 
 import javax.sql.ConnectionEvent;
@@ -27,14 +29,13 @@ class TempFileInfo {
 class Connection implements Runnable {
 
     Socket mySock;
+    
+    QueueThread queueThread;
 
-    public Connection(Socket mySock) {
+    public Connection(Socket mySock, QueueThread queueThread2) {
         this.mySock = mySock;
+        this.queueThread = queueThread2;
     }
-
- 
-    
-    
 
     @Override
     public void run() {
@@ -65,6 +66,18 @@ class Connection implements Runnable {
                  case RequestSerials:
                      handleRequestSerials(dataIn,dataOut,gson,base);
                      break;
+                     
+                 case PushQueueAddRequest:
+                     handlePushQueueAddRequest(dataIn, dataOut, gson, base);
+                     break;
+                     
+                 case PushQueueRemoveRequest:
+                     handlePushQueueRemoveRequest(dataIn, dataOut, gson, base);
+                     break;
+                     
+                 case PushQueueDisplayRequest:
+                     handlePushQueueDisplayRequest(dataIn,dataOut, gson, base);
+                     break;
                  
                  }
                 
@@ -78,6 +91,68 @@ class Connection implements Runnable {
     
     
     
+    private void handlePushQueueDisplayRequest(DataInputStream dataIn, DataOutputStream dataOut, Gson gson, StorageDatabase base) throws IOException {
+        QueueObject[] objects = queueThread.getAllQueueObjects();
+        
+        Protocol.PushQueue.PushQueueDisplayResponse response = new Protocol.PushQueue.PushQueueDisplayResponse();
+        response.items = new Protocol.PushQueue.PushQueueItem[objects.length];
+        for (int i = 0; i < objects.length; i++)
+        {
+            QueueObject obj = objects[i];
+            
+            Protocol.PushQueue.PushQueueItem item = new Protocol.PushQueue.PushQueueItem();
+            item.id = obj.id;
+            item.lastTime = obj.lastTime;
+            item.port = obj.port;
+            item.url = obj.url;
+            item.timeBetween = obj.timeBetween;
+            
+            response.items[i] = item;
+        }
+        
+        String output = gson.toJson(response);
+        System.out.println(output);
+        dataOut.writeUTF(output);
+        
+    }
+
+    private void handlePushQueueRemoveRequest(DataInputStream dataIn, DataOutputStream dataOut, Gson gson, StorageDatabase base) throws IOException {
+        String input = dataIn.readUTF();
+        
+        Protocol.PushQueue.PushQueueRemoveRequest req = gson.fromJson(input, Protocol.PushQueue.PushQueueRemoveRequest.class);
+        
+        boolean success = queueThread.removeQueueObject(req.id);
+        
+        Protocol.PushQueue.PushQueueRemoveResponse response =  new Protocol.PushQueue.PushQueueRemoveResponse();
+        response.success = success;
+        
+        dataOut.writeUTF(gson.toJson(response));
+            
+    }
+
+    private void handlePushQueueAddRequest(DataInputStream dataIn, DataOutputStream dataOut, Gson gson, StorageDatabase base) throws IOException {
+        String input = dataIn.readUTF();
+        
+        Protocol.PushQueue.PushQueueAddRequest req = gson.fromJson(input, Protocol.PushQueue.PushQueueAddRequest.class);
+        
+        QueueObject obj = new QueueObject();
+        obj.lastTime = 0;
+        obj.port = req.port;
+        obj.url = req.url;
+        obj.timeBetween = req.timeBetween;
+        
+        
+        long id = queueThread.addQueueObject(obj);
+        
+        Protocol.PushQueue.PushQueueAddResponse response =  new Protocol.PushQueue.PushQueueAddResponse();
+        
+        response.id = id;
+        
+        dataOut.writeUTF(gson.toJson(response));
+      
+        
+    }
+
     private void handleRequestSerials(DataInputStream dataIn, DataOutputStream dataOut, Gson gson, StorageDatabase base) throws IOException {
         List<Integer> serials = base.getAllSerials();
         
@@ -204,9 +279,7 @@ class Connection implements Runnable {
 
             long length = getOffset( info2, mes.endTime);
 
-            res.sections[index].endTime = mes.endTime;
-            
-         
+            res.sections[index].endTime = mes.endTime;  
             
             
             res.sections[index].length = length;
@@ -225,9 +298,6 @@ class Connection implements Runnable {
             
             
             long newLength = info.length - offset;
-
-     
-            
             
             res.sections[0].startTime = mes.startTime;
             res.sections[0].length = newLength;
@@ -260,53 +330,86 @@ class Connection implements Runnable {
         return offset;
     }
 
+    
+    short squashValues(short[] pointsToSquash, int numberOfPoints)
+    {
+        int sum = 0; 
+        for (int i = 0; i < numberOfPoints;i++)
+            sum+= (0xffff & pointsToSquash[i]);
+        
+        sum/= numberOfPoints;
+        
+        return (short) sum;
+    }
+    
     private void writeFiles(DataOutputStream dataOut, TempFileInfo[] fileToWrite, int resolution) throws IOException, FileNotFoundException {
-        final int sizeOfBuffer = 1024;
+        final int sizeOfBuffer = resolution * 100*2;
         byte[] byteTempArray = new byte[sizeOfBuffer];
         
         
         
         for (TempFileInfo info3 : fileToWrite) {
             
-            
-            byte[] outputBytes = new byte[(int) info3.actualLength];
-            int pointInOutput = 0;
+            ByteBuffer actualOutput = ByteBuffer.allocate((int) info3.actualLength);
+            ShortBuffer outputArray = actualOutput.asShortBuffer();
+          
+          int pointInOutput = 0;
             
             File f = new File(Constants.getRoot(), info3.file + "-0");
             try (FileInputStream in = new FileInputStream(f)) {
                 IOUtils.skipFully(in, info3.offset);
                 int current = 0;
-                int posInFile = 0;
+      
                 while (current < info3.length)
                 {
                    
                     int numOfBytesRead = IOUtils.read(in, byteTempArray, 0, sizeOfBuffer);
                     current+= numOfBytesRead;
                     
-                    if (current > info3.length)
+                    if (current > info3.length){
                         current = (int) info3.length;
-                    
-                    
-                    
-                    
-                    for (;posInFile < current/2 && pointInOutput < info3.actualLength; posInFile += resolution)
-                    {
-                        System.out.printf("I am adding something at %d, %d, %d, %d, %d\n",pointInOutput,posInFile,current,current/2,info3.actualLength);
-                        outputBytes[pointInOutput++] = byteTempArray[posInFile*2 - (current - numOfBytesRead)];
-                        outputBytes[pointInOutput++] = byteTempArray[posInFile*2+1 - (current - numOfBytesRead)];
+                        throw new RuntimeException("How is this possible?");
                         
+                    }
+                       
+                    
+                    
+                    ByteBuffer buffer = ByteBuffer.wrap(byteTempArray);
+                    ShortBuffer view = buffer.asShortBuffer();
+                    
+                    int tempPosition = 0;
+                    for (int f1 = 0; f1 < 100 && pointInOutput < info3.actualLength/2; f1++)
+                    {
+                        int amountToSquash =0;
+                        short[] valuesToSquash = new short[resolution];
+                        
+                      
+                        
+                        System.out.println(pointInOutput);
+                        
+                        for (int i = 0; i < resolution && tempPosition < numOfBytesRead/2; i++, tempPosition++)
+                        {
+                            valuesToSquash[i] = view.get(tempPosition);
+                            amountToSquash++;
+                            
+                        }
+                    
+                        
+                        short value = squashValues(valuesToSquash, amountToSquash);
+                        outputArray.put(pointInOutput++,value);
                     }
                     
                     
+                    
                 }
-                if (info3.actualLength != pointInOutput)
+                if (info3.actualLength != pointInOutput*2)
                     throw new RuntimeException("Did not actually read in all stuff");
                
                 System.out.println("Writing at " + System.currentTimeMillis());
-                IOUtils.write(outputBytes, dataOut);
+                IOUtils.write(actualOutput.array(), dataOut);
                 
                 
-                System.out.println(f.getAbsolutePath() + " : " + outputBytes.length);
+                System.out.println(f.getAbsolutePath() + " : " + actualOutput.array().length);
             }
         }
     }
@@ -317,14 +420,18 @@ public class Server implements Runnable {
 
     Thread serverAcceptingThread;
     ServerSocket mySocket;
+    
+    QueueThread queueThread;
 
-    public Server() {
+    public Server(QueueThread g) {
         try {
             mySocket = new ServerSocket(5632);
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+        
+        queueThread = g;
         serverAcceptingThread = new Thread(this);
         serverAcceptingThread.start();
     }
@@ -337,7 +444,9 @@ public class Server implements Runnable {
             while (true) {
 
                 Socket s = mySocket.accept();
-                Connection c = new Connection(s);
+                
+                System.out.println("Accepted");
+                Connection c = new Connection(s,queueThread);
                 Thread connectionThread = new Thread(c);
                 connectionThread.start();
                 childeren.add(connectionThread);
@@ -378,6 +487,11 @@ public class Server implements Runnable {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+    }
+
+    public void start() {
+       
+        
     }
 
 }

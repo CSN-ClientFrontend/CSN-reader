@@ -19,6 +19,7 @@ public class ConfigFile {
 	{
 		int currentInFile;
 		int currentFileLocation;
+		String currentFileName;
 	}
 	
 	
@@ -63,7 +64,15 @@ public class ConfigFile {
 		return config.currentInFile;
 	}
 	
+	public String getCurrentFileName()
+	{
+	    return config.currentFileName;
+	}
 	
+	public void setCurrentFileName(String currentFile)
+	{
+	    config.currentFileName = currentFile;
+	}
 	
 	public int getCurrentFileLocation()
 	{
